@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Grocery Checklist – Editable with Quantities</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --card: #ffffff;
+    --ink: #222;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-ink: #fff;
+    --border: #e5e7eb;
+    --danger: #b91c1c;
+    --ok: #065f46;
+    --radius: 12px;
+  }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink); font:16px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; }
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: linear-gradient(to bottom, rgba(250,250,250,0.98), rgba(250,250,250,0.9));
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--border);
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
+  h1 { margin: 0 0 8px; font-size: 1.6rem; }
+  .bar { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+  .bar > * { min-width: 0; }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    align-items: center; justify-content: flex-end;
+  }
+  input[type="search"], select, input[type="text"], input[type="number"] {
+    width: 100%; box-sizing: border-box; padding: 10px 12px;
+    border: 1px solid var(--border); background: #fff; border-radius: 10px;
+    outline: none;
+  }
+  input[type="search"]:focus, select:focus, input[type="text"]:focus, input[type="number"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+  button {
+    border: 1px solid var(--border); background: var(--card); color: var(--ink);
+    border-radius: 10px; padding: 10px 12px; cursor: pointer;
+  }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn-ghost { background: transparent; }
+  .btn-danger { background: var(--danger); color:#fff; border-color: var(--danger); }
+  .btn-icon { padding: 6px 8px; display:inline-flex; gap:6px; align-items:center; }
+  .pill { font-size: .85rem; color: var(--muted); }
+  main { padding: 16px; }
+  section.category {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 8px 8px 4px; margin-bottom: 14px;
+  }
+  section.category h2 {
+    font-size: 1.05rem; margin: 6px 8px 8px; font-weight: 700; display:flex; align-items:center; gap:8px;
+  }
+  ul.items { list-style: none; margin: 0; padding: 0 4px 6px; }
+  li.item {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+    padding: 8px; border-radius: 10px;
+  }
+  li.item:hover { background: #f5f7fb; }
+  .item-left { display:flex; align-items:center; gap:10px; }
+  .name { font-weight: 600; }
+  .qty { font-size: .92rem; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .actions { display:flex; gap:6px; }
+  .chip { display:inline-block; padding: 2px 8px; border-radius: 999px; border:1px solid var(--border); background:#fff; font-size:.78rem; color: var(--muted); }
+  .drawer {
+    margin-top: 18px; background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius);
+  }
+  details > summary { cursor: pointer; padding: 10px 12px; font-weight:600; list-style: none; }
+  details[open] { border-style: solid; }
+  .removed { padding: 0 12px 12px; }
+  .removed .row { display:flex; justify-content: space-between; align-items:center; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+  .removed .row:last-child { border-bottom: 0; }
+  .grid-add {
+    display:grid; gap:8px; grid-template-columns: 2fr minmax(100px, 1fr) minmax(160px, 1fr) auto;
+    align-items: end; margin-top: 10px;
+  }
+  .hint { font-size: .82rem; color: var(--muted); }
+  .spacer { flex: 1; }
+  .footer {
+    display:flex; flex-wrap: wrap; gap:8px; justify-content: space-between; align-items:center;
+    background: var(--card); border-top: 1px solid var(--border); padding: 10px 16px; position: sticky; bottom: 0; z-index: 40;
+  }
+  .empty { padding: 10px 14px; color: var(--muted); }
+  .hidden { display:none !important; }
+  .strike { text-decoration: line-through; color: var(--muted); }
+  .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85em; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 6px; padding: 1px 6px; }
+  @media (max-width: 820px) {
+    .bar { grid-template-columns: 1fr; }
+    .grid-add { grid-template-columns: 1fr 1fr; }
+    .grid-add select { grid-column: 1 / -1; }
+    .grid-add button { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Grocery Checklist</h1>
+    <div class="bar">
+      <input id="search" type="search" placeholder="Search or filter (e.g., 'shrimp', 'dairy', 'bell pepper')…" />
+      <div class="controls">
+        <button id="btnPrint" title="Print list">🖨️ Print</button>
+        <button id="btnReset" class="btn-ghost" title="Reset to original list">↺ Reset</button>
+        <button id="btnExport" class="btn-ghost" title="Export JSON">⤴ Export</button>
+        <button id="btnImport" class="btn-ghost" title="Import JSON">⤵ Import</button>
+        <span class="pill" id="count"></span>
+      </div>
+    </div>
+    <div class="grid-add" style="margin-top:10px">
+      <div>
+        <label class="hint">Item</label>
+        <input id="addName" type="text" placeholder="e.g., Lemon tortilla chips" />
+      </div>
+      <div>
+        <label class="hint">Qty</label>
+        <input id="addQty" type="text" placeholder="e.g., 2 bags" />
+      </div>
+      <div>
+        <label class="hint">Category</label>
+        <select id="addCat"></select>
+      </div>
+      <div>
+        <button id="btnAdd" class="btn-primary">＋ Add Item</button>
+      </div>
+    </div>
+    <div class="hint" style="margin-top:6px">
+      Tip: Double‑click an item name or qty to edit. Press <span class="kbd">Enter</span> to save or click ✓.
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="app"></main>
+
+<div class="wrap drawer">
+  <details id="removedDrawer">
+    <summary>🗂 Removed items (click to expand & restore)</summary>
+    <div class="removed" id="removedList"></div>
+  </details>
+</div>
+
+<footer class="footer">
+  <div class="hint">All changes auto‑saved to your browser (localStorage).</div>
+  <div class="controls">
+    <button id="clearRemoved" class="btn-ghost">Clear Removed</button>
+    <button id="restoreAll">Restore All</button>
+  </div>
+</footer>
+
+<script>
+/** ---------- Data ---------- **/
+const STORAGE_KEY = 'groceryChecklist.v2';
+const CATEGORIES_ORDER = [
+  "1. Produce",
+  "2. Deli & Prepared Foods",
+  "3. Meat & Seafood",
+  "4. Dairy, Cheese & Eggs",
+  "5. Snacks, Chips & Cereal",
+  "6. Frozen",
+  "7. Pantry, Baking & Spices",
+  "8. Canned & Jarred Goods",
+  "9. Condiments & Oils",
+  "10. Beverages",
+  "11. Paper & Disposable Goods"
+];
+
+function seedData() {
+  // From your latest “store walking path” list, with quantities
+  const items = [
+    {n:"Bananas", q:"as needed", c:"1. Produce"},
+    {n:"Garlic", q:"8 cloves", c:"1. Produce"},
+    {n:"Tomato", q:"2", c:"1. Produce"},
+    {n:"Yellow onion", q:"3 medium", c:"1. Produce"},
+    {n:"Broccoli", q:"1 crown", c:"1. Produce"},
+    {n:"Cauliflower", q:"1 medium head", c:"1. Produce"},
+    {n:"Cremini mushrooms", q:"1 lb", c:"1. Produce"},
+    {n:"Kale", q:"1 bunch", c:"1. Produce"},
+    {n:"Lettuce", q:"1 head", c:"1. Produce"},
+    {n:"Orange bell pepper", q:"4", c:"1. Produce"},
+    {n:"Red bell pepper", q:"2", c:"1. Produce"},
+    {n:"Zucchini squash", q:"6 medium", c:"1. Produce"},
+    {n:"Spring mix (mixed greens)", q:"5 oz pkg", c:"1. Produce"},
+
+    {n:"Goat cheese", q:"4 oz log", c:"2. Deli & Prepared Foods"},
+    {n:"Parmesan cheese", q:"2 oz", c:"2. Deli & Prepared Foods"},
+    {n:"Sliced ham", q:"", c:"2. Deli & Prepared Foods"},
+    {n:"Chicken nuggets", q:"", c:"2. Deli & Prepared Foods"},
+
+    {n:"Bacon", q:"", c:"3. Meat & Seafood"},
+    {n:"Chicken breasts, boneless skinless", q:"1½ lb", c:"3. Meat & Seafood"},
+    {n:"Ground pork sausage", q:"1 lb", c:"3. Meat & Seafood"},
+    {n:"Raw peeled shrimp", q:"1½ lb", c:"3. Meat & Seafood"},
+
+    {n:"Cheddar cheese", q:"~5.3 oz", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Mozzarella cheese", q:"8 oz block", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Eggs", q:"14", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Heavy whipping cream", q:"8 fl oz", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Plain Greek yogurt", q:"¼ cup", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Moo Tubes", q:"", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Milk", q:"", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Lemon bread", q:"2 loaves", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Protein shakes (vanilla)", q:"2 cases", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Protein shakes (chocolate)", q:"2 cases", c:"4. Dairy, Cheese & Eggs"},
+
+    {n:"Lemon tortilla chips", q:"2 bags", c:"5. Snacks, Chips & Cereal"},
+    {n:"Cheddar popcorn", q:"2 bags", c:"5. Snacks, Chips & Cereal"},
+    {n:"Lucky Charms cereal", q:"1 box", c:"5. Snacks, Chips & Cereal"},
+    {n:"Jellos", q:"2", c:"5. Snacks, Chips & Cereal"},
+
+    {n:"Ice cream", q:"2 cartons", c:"6. Frozen"},
+
+    {n:"Honey", q:"", c:"7. Pantry, Baking & Spices"},
+    {n:"Black pepper", q:"", c:"7. Pantry, Baking & Spices"},
+    {n:"Italian seasoning", q:"", c:"7. Pantry, Baking & Spices"},
+    {n:"Paprika", q:"", c:"7. Pantry, Baking & Spices"},
+    {n:"Salt", q:"", c:"7. Pantry, Baking & Spices"},
+    {n:"Smoked paprika", q:"", c:"7. Pantry, Baking & Spices"},
+    {n:"Pumpkin seeds", q:"½ cup", c:"7. Pantry, Baking & Spices"},
+
+    {n:"Chicken or vegetable broth", q:"8 fl oz", c:"8. Canned & Jarred Goods"},
+    {n:"Tomato sauce", q:"2 × 8 oz cans", c:"8. Canned & Jarred Goods"},
+    {n:"Olives", q:"", c:"8. Canned & Jarred Goods"},
+
+    {n:"Dijon mustard", q:"", c:"9. Condiments & Oils"},
+    {n:"Extra virgin olive oil", q:"", c:"9. Condiments & Oils"},
+    {n:"White wine vinegar", q:"", c:"9. Condiments & Oils"},
+    {n:"Honey mustard sauce", q:"", c:"9. Condiments & Oils"},
+
+    {n:"Juice", q:"3 cartons", c:"10. Beverages"},
+
+    {n:"Paper plates", q:"", c:"11. Paper & Disposable Goods"},
+    {n:"Paper bowls", q:"", c:"11. Paper & Disposable Goods"}
+  ];
+  // Assign ids
+  return {
+    items: items.map((x, i) => ({ id: crypto.randomUUID(), name: x.n, qty: x.q, cat: x.c })),
+    removed: []
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return seedData();
+    const obj = JSON.parse(raw);
+    if (!obj.items) throw new Error('bad');
+    return obj;
+  } catch {
+    return seedData();
+  }
+}
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); updateCount(); }
+
+let state = loadState();
+
+/** ---------- DOM helpers ---------- **/
+const $ = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+const app = $('#app');
+const removedList = $('#removedList');
+
+function iconEdit(){ return '✏️'; }
+function iconSave(){ return '✓'; }
+function iconCancel(){ return '↩'; }
+function iconDelete(){ return '🗑️'; }
+function iconRestore(){ return '⤺ Restore'; }
+
+function categoryTitle(cat){ return cat; }
+
+function render() {
+  app.innerHTML = '';
+  const filter = ($('#search').value || '').trim().toLowerCase();
+
+  // Build category sections
+  for (const cat of CATEGORIES_ORDER) {
+    const items = state.items.filter(it => it.cat === cat)
+      .filter(it => !filter || it.name.toLowerCase().includes(filter) || it.qty.toLowerCase().includes(filter) || it.cat.toLowerCase().includes(filter));
+    if (items.length === 0) continue;
+
+    const sec = document.createElement('section');
+    sec.className = 'category';
+    const h2 = document.createElement('h2');
+    h2.textContent = categoryTitle(cat);
+    sec.appendChild(h2);
+
+    const ul = document.createElement('ul');
+    ul.className = 'items';
+
+    for (const it of items) {
+      ul.appendChild(renderItem(it));
+    }
+    sec.appendChild(ul);
+    app.appendChild(sec);
+  }
+
+  renderRemoved();
+  updateCount();
+  refreshCategorySelect();
+  if (!app.children.length) {
+    const div = document.createElement('div');
+    div.className = 'empty';
+    div.textContent = 'No items match your search.';
+    app.appendChild(div);
+  }
+}
+
+function renderItem(it){
+  const li = document.createElement('li');
+  li.className = 'item';
+  li.dataset.id = it.id;
+
+  // left: checkbox
+  const left = document.createElement('div');
+  left.className = 'item-left';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.title = 'Check to remove';
+  cb.addEventListener('change', () => checkItem(it.id));
+  left.appendChild(cb);
+
+  // middle: name + qty (editable)
+  const mid = document.createElement('div');
+  const name = document.createElement('span');
+  name.className = 'name';
+  name.textContent = it.name;
+  name.title = 'Double‑click to edit name';
+  name.addEventListener('dblclick', () => inlineEdit(name, it.id, 'name'));
+
+  const space = document.createTextNode(' ');
+  const qty = document.createElement('span');
+  qty.className = 'qty';
+  qty.textContent = it.qty ? `• ${it.qty}` : '';
+  qty.title = 'Double‑click to edit quantity';
+  qty.addEventListener('dblclick', () => inlineEdit(qty, it.id, 'qty', true));
+
+  mid.appendChild(name);
+  mid.appendChild(space);
+  mid.appendChild(qty);
+
+  // right: actions (edit, move, delete)
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+
+  const btnEdit = document.createElement('button');
+  btnEdit.className = 'btn-icon';
+  btnEdit.title = 'Edit name & qty';
+  btnEdit.textContent = iconEdit();
+  btnEdit.addEventListener('click', () => openRowEditor(li, it));
+  actions.appendChild(btnEdit);
+
+  const moveSelect = document.createElement('select');
+  moveSelect.title = 'Move to category';
+  for (const cat of CATEGORIES_ORDER) {
+    const opt = document.createElement('option');
+    opt.value = cat; opt.textContent = cat;
+    if (cat === it.cat) opt.selected = true;
+    moveSelect.appendChild(opt);
+  }
+  moveSelect.addEventListener('change', e => { it.cat = e.target.value; saveState(); render(); });
+  actions.appendChild(moveSelect);
+
+  const btnDel = document.createElement('button');
+  btnDel.className = 'btn-icon';
+  btnDel.title = 'Delete (send to Removed)';
+  btnDel.textContent = iconDelete();
+  btnDel.addEventListener('click', () => checkItem(it.id));
+  actions.appendChild(btnDel);
+
+  li.appendChild(left);
+  li.appendChild(mid);
+  li.appendChild(actions);
+
+  return li;
+}
+
+function inlineEdit(span, id, field, isQty=false){
+  const it = state.items.find(x => x.id === id);
+  if (!it) return;
+  const old = field === 'name' ? it.name : it.qty;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = old || '';
+  input.style.width = (Math.max(10, (span.textContent || '').length) + 3) + 'ch';
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { commit(); }
+    if (e.key === 'Escape') { cancel(); }
+  });
+  input.addEventListener('blur', commit);
+
+  span.replaceWith(input);
+  input.focus(); input.select();
+
+  function commit(){
+    const val = input.value.trim();
+    if (field === 'name') it.name = val || it.name;
+    else it.qty = val;
+    saveState(); render();
+  }
+  function cancel(){ render(); }
+}
+
+function openRowEditor(li, it){
+  // Replace middle & actions with inputs
+  const mid = li.children[1];
+  const actions = li.children[2];
+  mid.innerHTML = '';
+  actions.innerHTML = '';
+
+  const nameI = document.createElement('input');
+  nameI.type = 'text'; nameI.value = it.name; nameI.placeholder = 'Item name'; nameI.style.minWidth='160px';
+
+  const qtyI = document.createElement('input');
+  qtyI.type = 'text'; qtyI.value = it.qty; qtyI.placeholder = 'Qty (e.g., 2 bags)'; qtyI.style.minWidth='120px';
+
+  mid.appendChild(nameI);
+  mid.appendChild(document.createTextNode(' '));
+  mid.appendChild(qtyI);
+
+  const btnSave = document.createElement('button');
+  btnSave.className = 'btn-icon'; btnSave.textContent = iconSave();
+  btnSave.addEventListener('click', save);
+  const btnCancel = document.createElement('button');
+  btnCancel.className = 'btn-icon'; btnCancel.textContent = iconCancel();
+  btnCancel.addEventListener('click', () => render());
+
+  actions.appendChild(btnSave);
+  actions.appendChild(btnCancel);
+
+  nameI.focus(); nameI.select();
+  nameI.addEventListener('keydown', e => { if (e.key==='Enter') save(); if (e.key==='Escape') render(); });
+  qtyI.addEventListener('keydown', e => { if (e.key==='Enter') save(); if (e.key==='Escape') render(); });
+
+  function save(){
+    const nm = nameI.value.trim();
+    const qv = qtyI.value.trim();
+    if (nm) it.name = nm;
+    it.qty = qv;
+    saveState(); render();
+  }
+}
+
+function checkItem(id){
+  const i = state.items.findIndex(x => x.id === id);
+  if (i === -1) return;
+  const [it] = state.items.splice(i, 1);
+  state.removed.unshift({...it, removedAt: Date.now()});
+  saveState(); render();
+}
+
+function restoreItem(id){
+  const i = state.removed.findIndex(x => x.id === id);
+  if (i === -1) return;
+  const [it] = state.removed.splice(i, 1);
+  state.items.push(it);
+  saveState(); render();
+}
+
+function renderRemoved(){
+  removedList.innerHTML = '';
+  if (state.removed.length === 0) {
+    removedList.innerHTML = '<div class="empty">Nothing here yet.</div>';
+    return;
+  }
+  for (const it of state.removed) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const left = document.createElement('div');
+    left.innerHTML = `<span class="name">${escapeHtml(it.name)}</span> <span class="qty muted">${it.qty ? '• '+escapeHtml(it.qty) : ''}</span> <span class="chip">${escapeHtml(it.cat)}</span>`;
+    const right = document.createElement('div');
+    const btn = document.createElement('button');
+    btn.textContent = iconRestore();
+    btn.addEventListener('click', () => restoreItem(it.id));
+    right.appendChild(btn);
+    row.appendChild(left); row.appendChild(right);
+    removedList.appendChild(row);
+  }
+}
+
+function updateCount(){
+  const total = state.items.length;
+  const removed = state.removed.length;
+  $('#count').textContent = `${total} items • ${removed} removed`;
+}
+
+function refreshCategorySelect(){
+  const sel = $('#addCat');
+  const current = sel.value;
+  sel.innerHTML = '';
+  for (const cat of CATEGORIES_ORDER) {
+    const opt = document.createElement('option');
+    opt.value = cat; opt.textContent = cat;
+    sel.appendChild(opt);
+  }
+  sel.value = current || CATEGORIES_ORDER[0];
+}
+
+function addItem(){
+  const name = ($('#addName').value || '').trim();
+  const qty = ($('#addQty').value || '').trim();
+  const cat = $('#addCat').value;
+  if (!name) {
+    alert('Please enter an item name.'); return;
+  }
+  state.items.push({ id: crypto.randomUUID(), name, qty, cat });
+  $('#addName').value = ''; $('#addQty').value = '';
+  saveState(); render();
+}
+
+function resetAll(){
+  if (!confirm('Reset to your original list? This will replace current items but keep a backup export prompt.')) return;
+  state = seedData();
+  saveState(); render();
+}
+
+function exportJson(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'grocery-checklist.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importJson(){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json';
+  inp.addEventListener('change', () => {
+    const file = inp.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const obj = JSON.parse(reader.result);
+        if (!obj.items || !Array.isArray(obj.items)) throw new Error('Invalid file');
+        state = obj;
+        saveState(); render();
+      } catch (e) {
+        alert('Import failed: ' + e.message);
+      }
+    };
+  
