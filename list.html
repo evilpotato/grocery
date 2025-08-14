@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="content=device-width, initial-scale=1" />
+  <title>Grocery Checklist — Auto-Remove on Check</title>
+  <style>
+    :root{
+      --bg:#0b0c0f;
+      --card:#14161b;
+      --ink:#e8ebf0;
+      --muted:#9aa3b2;
+      --accent:#7dd3fc;
+      --accent-ink:#06283b;
+      --ok:#34d399;
+      --warn:#fbbf24;
+      --danger:#f87171;
+      --ring: rgba(125, 211, 252, .45);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font:16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background:linear-gradient(180deg, #0a0c10, #0b0c0f 30%);
+      color:var(--ink);
+    }
+    header{
+      position:sticky; top:0; z-index:10; backdrop-filter:saturate(140%) blur(8px);
+      background:rgba(11,12,15,.7); border-bottom:1px solid #1f232b;
+    }
+    .container{max-width:900px; margin:0 auto; padding:18px 16px}
+    h1{font-size:1.35rem; margin:0 0 8px; letter-spacing:.2px}
+    .sub{color:var(--muted); font-size:.92rem; margin-bottom:12px}
+
+    .controls{display:flex; gap:8px; flex-wrap:wrap}
+    .controls input[type="search"]{
+      flex:1 1 280px; border:1px solid #2a2f38; background:#0e1116; color:var(--ink);
+      padding:10px 12px; border-radius:12px; outline:none;
+    }
+    .btn{border:1px solid #2a2f38; background:var(--card); color:var(--ink);
+      padding:10px 12px; border-radius:12px; cursor:pointer; transition:.15s transform, .2s background, .2s border-color;}
+    .btn:hover{transform:translateY(-1px); border-color:#3a4250}
+    .btn.primary{background:var(--accent); color:var(--accent-ink); border-color:transparent}
+    .btn.warn{border-color:#3a2c14}
+    .pill{font-size:.78rem; padding:4px 8px; border-radius:999px; border:1px solid #2a2f38; color:var(--muted)}
+
+    main{max-width:900px; margin:18px auto; padding:0 16px 36px}
+    section{background:var(--card); border:1px solid #1f232b; border-radius:16px; margin-bottom:14px; overflow:hidden}
+    section header{position:relative; background:transparent; border:0}
+    .sec-title{display:flex; align-items:center; justify-content:space-between; padding:14px 16px;}
+    .sec-title h2{font-size:1rem; margin:0}
+    .sec-title .count{color:var(--muted); font-size:.85rem}
+
+    ul.items{list-style:none; margin:0; padding:0}
+    li.item{display:flex; align-items:flex-start; gap:10px; padding:12px 16px; border-top:1px solid #1f232b}
+    li.item:first-child{border-top:0}
+    .chk{appearance:none; width:20px; height:20px; border-radius:6px; border:1.5px solid #2a2f38; background:#0f1217; margin-top:2px; position:relative; cursor:pointer; outline:none;}
+    .chk:focus-visible{box-shadow:0 0 0 3px var(--ring)}
+    .chk:checked{background:var(--ok); border-color:var(--ok)}
+    .chk:checked::after{content:""; position:absolute; inset:0; background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M9.5 16.2 5.8 12.5l-1.4 1.4 5.1 5.1L20 9.5 18.6 8.1z"/></svg>') center/75% no-repeat}
+
+    .label{flex:1 1 auto}
+    .name{font-weight:600}
+    .meta{color:var(--muted); font-size:.9rem}
+
+    .fade-out{animation:fadeOut .28s ease forwards}
+    @keyframes fadeOut{to{opacity:0; transform:translateX(6px)}}
+
+    .toolbar{display:flex; gap:8px; align-items:center; margin:8px 0 0}
+    details.removed{margin-top:10px}
+    details.removed summary{cursor:pointer; color:var(--muted)}
+    .removed-list{margin-top:8px; padding:10px; border:1px dashed #2a2f38; border-radius:12px}
+    .removed-chip{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; margin:6px; border-radius:999px; border:1px solid #2a2f38; background:#10131a; font-size:.9rem}
+    .removed-chip button{all:unset; cursor:pointer; padding:4px 6px; border-radius:8px; background:#19202b}
+
+    @media print{
+      header,.controls,.toolbar,details.removed{display:none !important}
+      body{background:white; color:black}
+      section{border:1px solid #ccc}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>Grocery Checklist</h1>
+      <div class="sub">Items are <strong>removed automatically</strong> when checked. Use <em>Undo</em> or the <em>Removed</em> drawer if you make a mistake.</div>
+      <div class="controls">
+        <input id="search" type="search" placeholder="Search items… (e.g., shrimp, chips, eggs)" aria-label="Search items" />
+        <button class="btn" id="undoBtn" title="Undo last removal">Undo</button>
+        <button class="btn" id="resetBtn" title="Restore all items">Reset All</button>
+        <button class="btn primary" id="printBtn" title="Print this list">Print</button>
+        <span class="pill" id="stats">0 remaining</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="app"></main>
+
+  <div class="container">
+    <details class="removed" id="removedDrawer">
+      <summary>Removed items (tap to view & restore)</summary>
+      <div class="removed-list" id="removedList"></div>
+    </details>
+  </div>
+
+  <script>
+    // --- Data ---------------------------------------------------------------
+    const DATA = [
+      {
+        title: "1. Produce",
+        items: [
+          { name: "Bananas" },
+          { name: "Garlic", meta: "8 cloves" },
+          { name: "Tomato", meta: "2" },
+          { name: "Yellow onion", meta: "3 medium" },
+          { name: "Broccoli", meta: "1 crown" },
+          { name: "Cauliflower", meta: "1 medium head" },
+          { name: "Cremini mushrooms", meta: "1 lb" },
+          { name: "Kale", meta: "1 bunch" },
+          { name: "Lettuce", meta: "1 head" },
+          { name: "Orange bell pepper", meta: "4" },
+          { name: "Red bell pepper", meta: "2" },
+          { name: "Zucchini squash", meta: "6 medium" },
+          { name: "Spring mix (mixed greens)", meta: "5 oz pkg" },
+        ]
+      },
+      {
+        title: "2. Deli & Prepared Foods",
+        items: [
+          { name: "Goat cheese", meta: "4 oz log" },
+          { name: "Parmesan cheese", meta: "2 oz" },
+          { name: "Sliced ham" },
+          { name: "Chicken nuggets" },
+        ]
+      },
+      {
+        title: "3. Meat & Seafood",
+        items: [
+          { name: "Bacon" },
+          { name: "Chicken breasts, boneless skinless", meta: "1½ lb" },
+          { name: "Ground pork sausage", meta: "1 lb" },
+          { name: "Raw peeled shrimp", meta: "1½ lb" },
+        ]
+      },
+      {
+        title: "4. Dairy, Cheese & Eggs",
+        items: [
+          { name: "Cheddar cheese", meta: "⅔ (8 oz) block" },
+          { name: "Mozzarella cheese", meta: "8 oz block" },
+          { name: "Eggs", meta: "14" },
+          { name: "Heavy whipping cream", meta: "8 fl oz" },
+          { name: "Plain Greek yogurt", meta: "¼ cup" },
+          { name: "Moo Tubes" },
+          { name: "Milk" },
+          { name: "Lemon bread", meta: "2 loaves" },
+          { name: "Protein shakes", meta: "4 cases (2 vanilla, 2 chocolate)" },
+        ]
+      },
+      {
+        title: "5. Snacks, Chips & Cereal",
+        items: [
+          { name: "Lemon tortilla chips", meta: "2 bags" },
+          { name: "Cheddar popcorn", meta: "2 bags" },
+          { name: "Lucky Charms cereal", meta: "1 box" },
+          { name: "Jellos", meta: "2" },
+        ]
+      },
+      {
+        title: "6. Frozen",
+        items: [
+          { name: "Ice cream", meta: "2 cartons" },
+        ]
+      },
+      {
+        title: "7. Pantry, Baking & Spices",
+        items: [
+          { name: "Honey" },
+          { name: "Black pepper" },
+          { name: "Italian seasoning" },
+          { name: "Paprika" },
+          { name: "Salt" },
+          { name: "Smoked paprika" },
+          { name: "Pumpkin seeds", meta: "½ cup" },
+        ]
+      },
+      {
+        title: "8. Canned & Jarred Goods",
+        items: [
+          { name: "Chicken or vegetable broth", meta: "8 fl oz" },
+          { name: "Tomato sauce", meta: "2 × 8 oz cans" },
+          { name: "Olives" },
+        ]
+      },
+      {
+        title: "9. Condiments & Oils",
+        items: [
+          { name: "Dijon mustard" },
+          { name: "Extra virgin olive oil" },
+          { name: "White wine vinegar" },
+          { name: "Honey mustard sauce" },
+        ]
+      },
+      {
+        title: "10. Beverages",
+        items: [
+          { name: "Juice", meta: "3 cartons" },
+        ]
+      },
+      {
+        title: "11. Paper & Disposable Goods",
+        items: [
+          { name: "Paper plates" },
+          { name: "Paper bowls" },
+        ]
+      },
+    ];
+
+    // --- Utilities ----------------------------------------------------------
+    const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+    const uidFor = (cat, item) => `${slug(cat)}__${slug(item)}`;
+
+    const $ = (sel, el=document) => el.querySelector(sel);
+    const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+
+    // Local storage state
+    const LS_REMOVED = 'grocery_removed_v1';
+    const LS_HISTORY = 'grocery_history_v1';
+
+    const getRemoved = () => new Set(JSON.parse(localStorage.getItem(LS_REMOVED) || '[]'));
+    const setRemoved = (set) => localStorage.setItem(LS_REMOVED, JSON.stringify([...set]));
+
+    const getHistory = () => JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
+    const setHistory = (arr) => localStorage.setItem(LS_HISTORY, JSON.stringify(arr));
+
+    // --- Render -------------------------------------------------------------
+    const app = document.getElementById('app');
+
+    function render(){
+      const removed = getRemoved();
+      app.innerHTML = '';
+
+      DATA.forEach(section => {
+        const sec = document.createElement('section');
+        const header = document.createElement('div');
+        header.className = 'sec-title';
+        header.innerHTML = `<h2>${section.title}</h2><span class="count"></span>`;
+
+        const ul = document.createElement('ul');
+        ul.className = 'items';
+
+        let count = 0;
+        section.items.forEach(({name, meta}) => {
+          const id = uidFor(section.title, name);
+          if(removed.has(id)) return; // skip removed
+          count++;
+
+          const li = document.createElement('li');
+          li.className = 'item';
+          li.dataset.id = id;
+
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.className = 'chk';
+          chk.setAttribute('aria-label', `Mark ${name} as picked up`);
+
+          const label = document.createElement('div');
+          label.className = 'label';
+          label.innerHTML = `<div class="name">${name}</div>${meta ? `<div class="meta">${meta}</div>`: ''}`;
+
+          chk.addEventListener('change', () => {
+            if(chk.checked){
+              completeItem(id, li, name);
+            }
+          });
+
+          li.appendChild(chk);
+          li.appendChild(label);
+          ul.appendChild(li);
+        });
+
+        header.querySelector('.count').textContent = count ? `${count} items` : 'All done';
+        sec.appendChild(header);
+        sec.appendChild(ul);
+        app.appendChild(sec);
+      });
+
+      updateStats();
+      syncSearch();
+      renderRemovedChips();
+    }
+
+    function updateStats(){
+      const remaining = $$('.item').length;
+      document.getElementById('stats').textContent = `${remaining} remaining`;
+    }
+
+    // --- Interactions -------------------------------------------------------
+    function completeItem(id, li, name){
+      li.classList.add('fade-out');
+      setTimeout(() => {
+        li.remove();
+        const removed = getRemoved();
+        removed.add(id);
+        setRemoved(removed);
+        const history = getHistory();
+        history.push({ id, name });
+        setHistory(history);
+        updateStats();
+        renderRemovedChips();
+      }, 220);
+    }
+
+    function undo(){
+      const history = getHistory();
+      if(!history.length) return;
+      const last = history.pop();
+      setHistory(history);
+      const removed = getRemoved();
+      removed.delete(last.id);
+      setRemoved(removed);
+      render();
+      // Focus the restored item if possible
+      const restored = document.querySelector(`[data-id="${last.id}"] .chk`);
+      if(restored){ restored.focus(); }
+    }
+
+    function resetAll(){
+      localStorage.removeItem(LS_REMOVED);
+      localStorage.removeItem(LS_HISTORY);
+      render();
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }
+
+    function renderRemovedChips(){
+      const removed = [...getRemoved()];
+      const wrap = document.getElementById('removedList');
+      wrap.innerHTML = '';
+      if(!removed.length){
+        wrap.textContent = 'Nothing removed yet.';
+        return;
+      }
+      // Build a lookup of id -> label
+      const idToLabel = new Map();
+      DATA.forEach(sec => sec.items.forEach(it => idToLabel.set(uidFor(sec.title, it.name), `${it.name}${it.meta ? ` — ${it.meta}`:''}`)));
+
+      removed.forEach(id => {
+        const chip = document.createElement('span');
+        chip.className = 'removed-chip';
+        chip.innerHTML = `<span>${idToLabel.get(id) || id}</span>`;
+        const btn = document.createElement('button');
+        btn.textContent = 'Restore';
+        btn.addEventListener('click', () => {
+          const r = getRemoved(); r.delete(id); setRemoved(r);
+          const hist = getHistory();
+          // Remove any existing entries for this id from history to avoid odd undos
+          for(let i = hist.length - 1; i >= 0; i--){ if(hist[i].id === id) hist.splice(i,1); }
+          setHistory(hist);
+          render();
+        });
+        chip.appendChild(btn);
+        wrap.appendChild(chip);
+      });
+    }
+
+    // Search filter
+    const searchEl = document.getElementById('search');
+    searchEl.addEventListener('input', syncSearch);
+
+    function syncSearch(){
+      const q = searchEl.value.trim().toLowerCase();
+      $$('#app section').forEach(sec => {
+        let visibleInSection = 0;
+        $$('.item', sec).forEach(li => {
+          const text = li.textContent.toLowerCase();
+          const show = !q || text.includes(q);
+          li.style.display = show ? '' : 'none';
+          if(show) visibleInSection++;
+        });
+        // Update section count and hide section if empty on filter
+        $('.count', sec.previousElementSibling || sec) // fallback
+        const countEl = $('.count', sec.querySelector('.sec-title') ? sec : document);
+        const header = $('.sec-title', sec);
+        if(header){ header.querySelector('.count').textContent = `${visibleInSection} items`; }
+        sec.style.display = (visibleInSection || !q) ? '' : 'none';
+      });
+      updateStats();
+    }
+
+    // Buttons
+    document.getElementById('undoBtn').addEventListener('click', undo);
+    document.getElementById('resetBtn').addEventListener('click', resetAll);
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+    // Init
+    render();
+  </script>
+</body>
+</html>
