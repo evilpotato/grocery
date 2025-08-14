@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Grocery Checklist — Mobile Optimized</title>
+<meta name="theme-color" content="#0b0c0f">
+<style>
+  /* --------- Mobile-first styles --------- */
+  :root{
+    --bg:#0b0c0f;
+    --card:#14161b;
+    --ink:#e8ebf0;
+    --muted:#9aa3b2;
+    --border:#222733;
+    --accent:#7dd3fc;
+    --accent-ink:#06283b;
+    --ok:#34d399;
+    --danger:#ef4444;
+    --ring: rgba(125, 211, 252, .45);
+    --radius:14px;
+    --tap:52px; /* min tap target height */
+  }
+  @supports(padding: max(0px)) {
+    /* Safe areas for notches */
+    :root{
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+      --safe-left: env(safe-area-inset-left);
+      --safe-right: env(safe-area-inset-right);
+    }
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%}
+  body{
+    margin:0; font:16px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    background:linear-gradient(180deg,#0a0c10,#0b0c0f 30%);
+    color:var(--ink);
+  }
+
+  /* Header */
+  header{
+    position:sticky; top:0; z-index:50;
+    padding: max(10px, var(--safe-top)) max(14px, var(--safe-left)) 12px max(14px, var(--safe-right));
+    backdrop-filter: saturate(140%) blur(10px);
+    background: rgba(11,12,15,.75);
+    border-bottom:1px solid var(--border);
+  }
+  h1{margin:0 0 6px; font-size:1.15rem; letter-spacing:.2px}
+  .sub{color:var(--muted); font-size:.9rem; margin-bottom:10px}
+
+  .controls{display:grid; grid-template-columns: 1fr auto auto; gap:8px; align-items:center}
+  .controls input[type="search"]{
+    min-height: var(--tap);
+    border:1px solid var(--border); background:#0f1217; color:var(--ink);
+    padding:12px 12px; border-radius:12px; outline:none;
+  }
+  .btn{
+    min-height: var(--tap);
+    border:1px solid var(--border); background:var(--card); color:var(--ink);
+    padding:12px 14px; border-radius:12px; cursor:pointer; font-weight:600;
+  }
+  .btn.primary{background:var(--accent); color:var(--accent-ink); border-color:transparent}
+  .btn.ghost{background:transparent}
+  .pill{justify-self:end; font-size:.9rem; color:var(--muted)}
+
+  main{padding:12px max(14px, var(--safe-left)) max(80px, 14px + var(--safe-bottom)) max(14px, var(--safe-right));}
+
+  /* Sections */
+  section{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:12px; overflow:hidden}
+  .sec-title{display:flex; align-items:center; justify-content:space-between; padding:12px 12px}
+  .sec-title h2{font-size:1rem; margin:0}
+  .sec-title .count{color:var(--muted); font-size:.9rem}
+
+  ul.items{list-style:none; margin:0; padding:0}
+  li.item{display:grid; grid-template-columns:auto 1fr auto; gap:12px; padding:12px; border-top:1px solid var(--border)}
+  li.item:first-child{border-top:0}
+  .chk{appearance:none; width:24px; height:24px; border-radius:8px; border:1.5px solid #2a2f38; background:#0f1217; margin-top:2px; position:relative; cursor:pointer}
+  .chk:focus-visible{box-shadow:0 0 0 3px var(--ring)}
+  .chk:checked{background:var(--ok); border-color:var(--ok)}
+  .chk:checked::after{content:\"\"; position:absolute; inset:0; background:url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M9.5 16.2 5.8 12.5l-1.4 1.4 5.1 5.1L20 9.5 18.6 8.1z\"/></svg>') center/75% no-repeat}
+
+  .name{font-weight:700}
+  .meta{color:var(--muted); font-size:.95rem}
+
+  .row-actions{display:flex; gap:8px}
+  .row-actions .btn{min-height:40px; padding:8px 10px; font-size:.95rem}
+
+  .fade-out{animation:fadeOut .24s ease forwards}
+  @keyframes fadeOut{to{opacity:0; transform:translateX(6px)}}
+
+  /* Add bar (mobile) */
+  .add-bar{position:sticky; bottom:0; z-index:60; padding:10px max(14px, var(--safe-left)) max(10px, var(--safe-bottom)) max(14px, var(--safe-right));
+    background:rgba(11,12,15,.96); border-top:1px solid var(--border); backdrop-filter:saturate(140%) blur(10px)}
+  .add-grid{display:grid; grid-template-columns: 1fr 120px auto; gap:8px}
+  .add-grid input, .add-grid select{min-height:var(--tap); border:1px solid var(--border); background:#0f1217; color:var(--ink); border-radius:12px; padding:10px 12px}
+  .add-grid button{min-height:var(--tap)}
+
+  /* Removed drawer */
+  details.removed{margin:8px 0 0}
+  details.removed summary{cursor:pointer; color:var(--muted); padding:10px 12px}
+  .removed-list{padding:0 12px 12px}
+  .removed-chip{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; margin:8px 0; border:1px dashed var(--border); border-radius:12px; background:#10131a}
+  .removed-chip .btn{min-height:40px}
+
+  /* Desktop enhancements */
+  @media (min-width: 768px){
+    h1{font-size:1.25rem}
+    .controls{grid-template-columns:1fr auto auto auto}
+    .add-grid{grid-template-columns: 2fr 1fr 1fr auto}
+  }
+
+  /* Optional light mode if user prefers */
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f6f7fb; --card:#ffffff; --ink:#1f2937; --muted:#6b7280; --border:#e5e7eb; --accent:#0ea5e9; --accent-ink:#05232e;
+      --ok:#059669; --danger:#dc2626;
+    }
+    body{background:linear-gradient(180deg,#eef2f7,#f6f7fb 40%)}
+    .chk{background:#fff; border-color:#cbd5e1}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Grocery Checklist</h1>
+  <div class="sub">Tap to check off — items are removed automatically. Use Undo or the Removed drawer if needed.</div>
+  <div class="controls">
+    <input id="search" type="search" placeholder="Search items…">
+    <button class="btn" id="undoBtn">Undo</button>
+    <span class="pill" id="stats">0 remaining</span>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<div class="wrap">
+  <details class="removed" id="removedDrawer">
+    <summary>Removed items (tap to view & restore)</summary>
+    <div class="removed-list" id="removedList"></div>
+  </details>
+</div>
+
+<!-- Add bar pinned to bottom on mobile -->
+<div class="add-bar">
+  <div class="add-grid">
+    <input id="addName" type="text" inputmode="text" autocomplete="off" placeholder="Add item (e.g., eggs)" aria-label="Item name">
+    <input id="addQty" type="text" inputmode="text" placeholder="Qty (e.g., 2 dozen)" aria-label="Quantity">
+    <select id="addCat" aria-label="Category"></select>
+    <button class="btn primary" id="btnAdd">Add</button>
+  </div>
+</div>
+
+<script>
+/* ------- Data from your store-walking path (same as before) ------- */
+const DATA = [
+  { title: "1. Produce", items: [
+    { name: "Bananas" },
+    { name: "Garlic", meta: "8 cloves" },
+    { name: "Tomato", meta: "2" },
+    { name: "Yellow onion", meta: "3 medium" },
+    { name: "Broccoli", meta: "1 crown" },
+    { name: "Cauliflower", meta: "1 medium head" },
+    { name: "Cremini mushrooms", meta: "1 lb" },
+    { name: "Kale", meta: "1 bunch" },
+    { name: "Lettuce", meta: "1 head" },
+    { name: "Orange bell pepper", meta: "4" },
+    { name: "Red bell pepper", meta: "2" },
+    { name: "Zucchini squash", meta: "6 medium" },
+    { name: "Spring mix (mixed greens)", meta: "5 oz pkg" },
+  ]},
+  { title: "2. Deli & Prepared Foods", items: [
+    { name: "Goat cheese", meta: "4 oz log" },
+    { name: "Parmesan cheese", meta: "2 oz" },
+    { name: "Sliced ham" },
+    { name: "Chicken nuggets" },
+  ]},
+  { title: "3. Meat & Seafood", items: [
+    { name: "Bacon" },
+    { name: "Chicken breasts, boneless skinless", meta: "1½ lb" },
+    { name: "Ground pork sausage", meta: "1 lb" },
+    { name: "Raw peeled shrimp", meta: "1½ lb" },
+  ]},
+  { title: "4. Dairy, Cheese & Eggs", items: [
+    { name: "Cheddar cheese", meta: "⅔ (8 oz) block" },
+    { name: "Mozzarella cheese", meta: "8 oz block" },
+    { name: "Eggs", meta: "14" },
+    { name: "Heavy whipping cream", meta: "8 fl oz" },
+    { name: "Plain Greek yogurt", meta: "¼ cup" },
+    { name: "Moo Tubes" },
+    { name: "Milk" },
+    { name: "Lemon bread", meta: "2 loaves" },
+    { name: "Protein shakes", meta: "4 cases (2 vanilla, 2 chocolate)" },
+  ]},
+  { title: "5. Snacks, Chips & Cereal", items: [
+    { name: "Lemon tortilla chips", meta: "2 bags" },
+    { name: "Cheddar popcorn", meta: "2 bags" },
+    { name: "Lucky Charms cereal", meta: "1 box" },
+    { name: "Jellos", meta: "2" },
+  ]},
+  { title: "6. Frozen", items: [
+    { name: "Ice cream", meta: "2 cartons" },
+  ]},
+  { title: "7. Pantry, Baking & Spices", items: [
+    { name: "Honey" },
+    { name: "Black pepper" },
+    { name: "Italian seasoning" },
+    { name: "Paprika" },
+    { name: "Salt" },
+    { name: "Smoked paprika" },
+    { name: "Pumpkin seeds", meta: "½ cup" },
+  ]},
+  { title: "8. Canned & Jarred Goods", items: [
+    { name: "Chicken or vegetable broth", meta: "8 fl oz" },
+    { name: "Tomato sauce", meta: "2 × 8 oz cans" },
+    { name: "Olives" },
+  ]},
+  { title: "9. Condiments & Oils", items: [
+    { name: "Dijon mustard" },
+    { name: "Extra virgin olive oil" },
+    { name: "White wine vinegar" },
+    { name: "Honey mustard sauce" },
+  ]},
+  { title: "10. Beverages", items: [
+    { name: "Juice", meta: "3 cartons" },
+  ]},
+  { title: "11. Paper & Disposable Goods", items: [
+    { name: "Paper plates" },
+    { name: "Paper bowls" },
+  ]},
+];
+
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+const uidFor = (cat, item) => `${slug(cat)}__${slug(item)}`;
+
+const $ = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+
+const LS_REMOVED = 'grocery_mobile_removed_v1';
+const LS_CUSTOM  = 'grocery_mobile_custom_v1'; // user-added items by category
+
+const getRemoved = () => new Set(JSON.parse(localStorage.getItem(LS_REMOVED) || '[]'));
+const setRemoved = (set) => localStorage.setItem(LS_REMOVED, JSON.stringify([...set]));
+
+// Custom additions are stored as { [categoryTitle]: [{name, meta}] }
+function getCustom(){
+  try { return JSON.parse(localStorage.getItem(LS_CUSTOM) || '{}'); }
+  catch { return {}; }
+}
+function setCustom(obj){ localStorage.setItem(LS_CUSTOM, JSON.stringify(obj)); }
+
+const app = document.getElementById('app');
+
+function buildData(){
+  // merge base DATA with custom additions (not removed)
+  const removed = getRemoved();
+  const custom = getCustom();
+  return DATA.map(section => {
+    const base = section.items.filter(it => !removed.has(uidFor(section.title, it.name)));
+    const extra = (custom[section.title] || []).filter(it => !removed.has(uidFor(section.title, it.name)));
+    return { title: section.title, items: [...base, ...extra] };
+  });
+}
+
+function render(){
+  const removed = getRemoved();
+  const data = buildData();
+  app.innerHTML='';
+
+  data.forEach(section => {
+    // Filter by search
+    const q = ($('#search').value || '').trim().toLowerCase();
+    const visibleItems = section.items.filter(it => {
+      const text = (it.name + ' ' + (it.meta||'')).toLowerCase();
+      return !q || text.includes(q);
+    });
+
+    const sec = document.createElement('section');
+    const head = document.createElement('div');
+    head.className = 'sec-title';
+    head.innerHTML = `<h2>${section.title}</h2><span class="count">${visibleItems.length ? visibleItems.length + ' items' : 'All done'}</span>`;
+
+    const ul = document.createElement('ul');
+    ul.className = 'items';
+
+    visibleItems.forEach(({name, meta}) => {
+      const id = uidFor(section.title, name);
+      const li = document.createElement('li');
+      li.className = 'item'; li.dataset.id = id;
+
+      const chk = document.createElement('input');
+      chk.type = 'checkbox'; chk.className = 'chk'; chk.setAttribute('aria-label', `Mark ${name} as picked up`);
+      chk.addEventListener('change', () => {
+        if (chk.checked) {
+          li.classList.add('fade-out');
+          setTimeout(() => {
+            const rem = getRemoved(); rem.add(id); setRemoved(rem);
+            render(); renderRemovedChips(); updateStats();
+          }, 200);
+        }
+      });
+
+      const mid = document.createElement('div');
+      mid.innerHTML = `<div class="name">${name}</div>${meta ? `<div class="meta">${meta}</div>` : ''}`;
+
+      const actions = document.createElement('div');
+      actions.className = 'row-actions';
+      const editBtn = document.createElement('button'); editBtn.className = 'btn ghost'; editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', () => openEditor(section.title, name, meta));
+      actions.appendChild(editBtn);
+
+      li.appendChild(chk);
+      li.appendChild(mid);
+      li.appendChild(actions);
+      ul.appendChild(li);
+    });
+
+    // hide entire section if no items match query
+    if (visibleItems.length === 0 && ($('#search').value||'').trim()) {
+      return;
+    }
+
+    sec.appendChild(head);
+    sec.appendChild(ul);
+    app.appendChild(sec);
+  });
+
+  updateStats();
+  refreshCategorySelect();
+  renderRemovedChips();
+}
+
+function updateStats(){
+  const total = $$('.item').length;
+  document.getElementById('stats').textContent = `${total} remaining`;
+}
+
+function refreshCategorySelect(){
+  const sel = document.getElementById('addCat');
+  const cur = sel.value;
+  sel.innerHTML='';
+  DATA.forEach(sec => {
+    const opt = document.createElement('option');
+    opt.value = sec.title; opt.textContent = sec.title;
+    sel.appendChild(opt);
+  });
+  sel.value = cur || DATA[0].title;
+}
+
+function addItem(){
+  const name = document.getElementById('addName').value.trim();
+  const qty = document.getElementById('addQty').value.trim();
+  const cat = document.getElementById('addCat').value;
+  if (!name) { alert('Please enter an item name.'); return; }
+  const custom = getCustom();
+  if (!custom[cat]) custom[cat] = [];
+  custom[cat].push({ name, meta: qty || undefined });
+  setCustom(custom);
+  document.getElementById('addName').value = '';
+  document.getElementById('addQty').value = '';
+  render();
+}
+
+function openEditor(category, name, meta){
+  // Simple prompt-based edit for mobile friendliness
+  const newName = prompt('Edit item name:', name);
+  if (newName === null) return;
+  const newMeta = prompt('Edit quantity/details (optional):', meta || '');
+  // Update in base DATA if present, else in custom
+  const section = DATA.find(s => s.title === category);
+  const baseIdx = section.items.findIndex(i => i.name === name);
+  if (baseIdx !== -1){
+    section.items[baseIdx].name = newName.trim() || name;
+    section.items[baseIdx].meta = (newMeta.trim() || undefined);
+  } else {
+    const custom = getCustom();
+    const arr = custom[category] || [];
+    const cIdx = arr.findIndex(i => i.name === name);
+    if (cIdx !== -1){
+      arr[cIdx].name = newName.trim() || name;
+      arr[cIdx].meta = (newMeta.trim() || undefined);
+      custom[category] = arr;
+      setCustom(custom);
+    }
+  }
+  render();
+}
+
+function renderRemovedChips(){
+  const removedWrap = document.getElementById('removedList');
+  const removed = [...getRemoved()];
+  removedWrap.innerHTML = '';
+  if (!removed.length){
+    removedWrap.textContent = 'Nothing removed yet.';
+    return;
+  }
+  // Build label map
+  const label = new Map();
+  DATA.forEach(sec => sec.items.forEach(it => label.set(uidFor(sec.title, it.name), `${it.name}${it.meta?' — '+it.meta:''}`)));
+  const custom = getCustom();
+  for (const [cat, arr] of Object.entries(custom)){
+    (arr||[]).forEach(it => label.set(uidFor(cat, it.name), `${it.name}${it.meta?' — '+it.meta:''}`));
+  }
+
+  removed.forEach(id => {
+    const chip = document.createElement('div');
+    chip.className = 'removed-chip';
+    const txt = document.createElement('div');
+    txt.textContent = label.get(id) || id;
+    const btn = document.createElement('button');
+    btn.className = 'btn'; btn.textContent = 'Restore';
+    btn.addEventListener('click', () => {
+      const s = getRemoved(); s.delete(id); setRemoved(s); render(); renderRemovedChips();
+    });
+    chip.appendChild(txt); chip.appendChild(btn);
+    removedWrap.appendChild(chip);
+  });
+}
+
+/* Search */
+document.getElementById('search').addEventListener('input', render);
+/* Add */
+document.getElementById('btnAdd').addEventListener('click', addItem);
+document.getElementById('addName').addEventListener('keydown', e => { if (e.key === 'Enter') addItem(); });
+document.getElementById('addQty').addEventListener('keydown', e => { if (e.key === 'Enter') addItem(); });
+/* Undo = restore last removed */
+document.getElementById('undoBtn').addEventListener('click', () => {
+  const removed = [...getRemoved()];
+  if (!removed.length) return;
+  const last = removed.pop();
+  setRemoved(new Set(removed));
+  render(); renderRemovedChips();
+});
+
+/* Initial render */
+render();
+</script>
+</body>
+</html>
