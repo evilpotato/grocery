@@ -539,7 +539,44 @@ function importJson(){
         state = obj;
         saveState(); render();
       } catch (e) {
-        alert('Import failed: ' + e.message);
+       alert('Import failed: ' + e.message);
       }
     };
-  
+    reader.readAsText(file);
+  });
+  inp.click();
+}
+
+function clearRemoved(){
+  if (!state.removed.length) return;
+  if (!confirm('Permanently clear removed items?')) return;
+  state.removed = []; saveState(); renderRemoved(); updateCount();
+}
+
+function restoreAll(){
+  if (!state.removed.length) return;
+  state.items.push(...state.removed.splice(0, state.removed.length));
+  saveState(); render();
+}
+
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+/** ---------- Events ---------- **/
+$('#btnAdd').addEventListener('click', addItem);
+$('#search').addEventListener('input', render);
+$('#btnReset').addEventListener('click', resetAll);
+$('#btnExport').addEventListener('click', exportJson);
+$('#btnImport').addEventListener('click', importJson);
+$('#clearRemoved').addEventListener('click', clearRemoved);
+$('#restoreAll').addEventListener('click', restoreAll);
+$('#btnPrint').addEventListener('click', () => window.print());
+
+// Enter to add from "Item" or "Qty" fields
+$('#addName').addEventListener('keydown', e => { if (e.key==='Enter') addItem(); });
+$('#addQty').addEventListener('keydown', e => { if (e.key==='Enter') addItem(); });
+
+/** ---------- Init ---------- **/
+render();
+</script>
+</body>
+</html>
