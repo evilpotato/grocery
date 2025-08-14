@@ -1,399 +1,582 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="content=device-width, initial-scale=1" />
-  <title>Grocery Checklist — Auto-Remove on Check</title>
-  <style>
-    :root{
-      --bg:#0b0c0f;
-      --card:#14161b;
-      --ink:#e8ebf0;
-      --muted:#9aa3b2;
-      --accent:#7dd3fc;
-      --accent-ink:#06283b;
-      --ok:#34d399;
-      --warn:#fbbf24;
-      --danger:#f87171;
-      --ring: rgba(125, 211, 252, .45);
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; font:16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      background:linear-gradient(180deg, #0a0c10, #0b0c0f 30%);
-      color:var(--ink);
-    }
-    header{
-      position:sticky; top:0; z-index:10; backdrop-filter:saturate(140%) blur(8px);
-      background:rgba(11,12,15,.7); border-bottom:1px solid #1f232b;
-    }
-    .container{max-width:900px; margin:0 auto; padding:18px 16px}
-    h1{font-size:1.35rem; margin:0 0 8px; letter-spacing:.2px}
-    .sub{color:var(--muted); font-size:.92rem; margin-bottom:12px}
-
-    .controls{display:flex; gap:8px; flex-wrap:wrap}
-    .controls input[type="search"]{
-      flex:1 1 280px; border:1px solid #2a2f38; background:#0e1116; color:var(--ink);
-      padding:10px 12px; border-radius:12px; outline:none;
-    }
-    .btn{border:1px solid #2a2f38; background:var(--card); color:var(--ink);
-      padding:10px 12px; border-radius:12px; cursor:pointer; transition:.15s transform, .2s background, .2s border-color;}
-    .btn:hover{transform:translateY(-1px); border-color:#3a4250}
-    .btn.primary{background:var(--accent); color:var(--accent-ink); border-color:transparent}
-    .btn.warn{border-color:#3a2c14}
-    .pill{font-size:.78rem; padding:4px 8px; border-radius:999px; border:1px solid #2a2f38; color:var(--muted)}
-
-    main{max-width:900px; margin:18px auto; padding:0 16px 36px}
-    section{background:var(--card); border:1px solid #1f232b; border-radius:16px; margin-bottom:14px; overflow:hidden}
-    section header{position:relative; background:transparent; border:0}
-    .sec-title{display:flex; align-items:center; justify-content:space-between; padding:14px 16px;}
-    .sec-title h2{font-size:1rem; margin:0}
-    .sec-title .count{color:var(--muted); font-size:.85rem}
-
-    ul.items{list-style:none; margin:0; padding:0}
-    li.item{display:flex; align-items:flex-start; gap:10px; padding:12px 16px; border-top:1px solid #1f232b}
-    li.item:first-child{border-top:0}
-    .chk{appearance:none; width:20px; height:20px; border-radius:6px; border:1.5px solid #2a2f38; background:#0f1217; margin-top:2px; position:relative; cursor:pointer; outline:none;}
-    .chk:focus-visible{box-shadow:0 0 0 3px var(--ring)}
-    .chk:checked{background:var(--ok); border-color:var(--ok)}
-    .chk:checked::after{content:""; position:absolute; inset:0; background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M9.5 16.2 5.8 12.5l-1.4 1.4 5.1 5.1L20 9.5 18.6 8.1z"/></svg>') center/75% no-repeat}
-
-    .label{flex:1 1 auto}
-    .name{font-weight:600}
-    .meta{color:var(--muted); font-size:.9rem}
-
-    .fade-out{animation:fadeOut .28s ease forwards}
-    @keyframes fadeOut{to{opacity:0; transform:translateX(6px)}}
-
-    .toolbar{display:flex; gap:8px; align-items:center; margin:8px 0 0}
-    details.removed{margin-top:10px}
-    details.removed summary{cursor:pointer; color:var(--muted)}
-    .removed-list{margin-top:8px; padding:10px; border:1px dashed #2a2f38; border-radius:12px}
-    .removed-chip{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; margin:6px; border-radius:999px; border:1px solid #2a2f38; background:#10131a; font-size:.9rem}
-    .removed-chip button{all:unset; cursor:pointer; padding:4px 6px; border-radius:8px; background:#19202b}
-
-    @media print{
-      header,.controls,.toolbar,details.removed{display:none !important}
-      body{background:white; color:black}
-      section{border:1px solid #ccc}
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Grocery Checklist – Editable with Quantities</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --card: #ffffff;
+    --ink: #222;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-ink: #fff;
+    --border: #e5e7eb;
+    --danger: #b91c1c;
+    --ok: #065f46;
+    --radius: 12px;
+  }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--ink); font:16px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; }
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: linear-gradient(to bottom, rgba(250,250,250,0.98), rgba(250,250,250,0.9));
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--border);
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
+  h1 { margin: 0 0 8px; font-size: 1.6rem; }
+  .bar { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+  .bar > * { min-width: 0; }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    align-items: center; justify-content: flex-end;
+  }
+  input[type="search"], select, input[type="text"], input[type="number"] {
+    width: 100%; box-sizing: border-box; padding: 10px 12px;
+    border: 1px solid var(--border); background: #fff; border-radius: 10px;
+    outline: none;
+  }
+  input[type="search"]:focus, select:focus, input[type="text"]:focus, input[type="number"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+  button {
+    border: 1px solid var(--border); background: var(--card); color: var(--ink);
+    border-radius: 10px; padding: 10px 12px; cursor: pointer;
+  }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn-ghost { background: transparent; }
+  .btn-danger { background: var(--danger); color:#fff; border-color: var(--danger); }
+  .btn-icon { padding: 6px 8px; display:inline-flex; gap:6px; align-items:center; }
+  .pill { font-size: .85rem; color: var(--muted); }
+  main { padding: 16px; }
+  section.category {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 8px 8px 4px; margin-bottom: 14px;
+  }
+  section.category h2 {
+    font-size: 1.05rem; margin: 6px 8px 8px; font-weight: 700; display:flex; align-items:center; gap:8px;
+  }
+  ul.items { list-style: none; margin: 0; padding: 0 4px 6px; }
+  li.item {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+    padding: 8px; border-radius: 10px;
+  }
+  li.item:hover { background: #f5f7fb; }
+  .item-left { display:flex; align-items:center; gap:10px; }
+  .name { font-weight: 600; }
+  .qty { font-size: .92rem; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .actions { display:flex; gap:6px; }
+  .chip { display:inline-block; padding: 2px 8px; border-radius: 999px; border:1px solid var(--border); background:#fff; font-size:.78rem; color: var(--muted); }
+  .drawer {
+    margin-top: 18px; background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius);
+  }
+  details > summary { cursor: pointer; padding: 10px 12px; font-weight:600; list-style: none; }
+  details[open] { border-style: solid; }
+  .removed { padding: 0 12px 12px; }
+  .removed .row { display:flex; justify-content: space-between; align-items:center; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+  .removed .row:last-child { border-bottom: 0; }
+  .grid-add {
+    display:grid; gap:8px; grid-template-columns: 2fr minmax(100px, 1fr) minmax(160px, 1fr) auto;
+    align-items: end; margin-top: 10px;
+  }
+  .hint { font-size: .82rem; color: var(--muted); }
+  .spacer { flex: 1; }
+  .footer {
+    display:flex; flex-wrap: wrap; gap:8px; justify-content: space-between; align-items:center;
+    background: var(--card); border-top: 1px solid var(--border); padding: 10px 16px; position: sticky; bottom: 0; z-index: 40;
+  }
+  .empty { padding: 10px 14px; color: var(--muted); }
+  .hidden { display:none !important; }
+  .strike { text-decoration: line-through; color: var(--muted); }
+  .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85em; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 6px; padding: 1px 6px; }
+  @media (max-width: 820px) {
+    .bar { grid-template-columns: 1fr; }
+    .grid-add { grid-template-columns: 1fr 1fr; }
+    .grid-add select { grid-column: 1 / -1; }
+    .grid-add button { grid-column: 1 / -1; }
+  }
+</style>
 </head>
 <body>
-  <header>
-    <div class="container">
-      <h1>Grocery Checklist</h1>
-      <div class="sub">Items are <strong>removed automatically</strong> when checked. Use <em>Undo</em> or the <em>Removed</em> drawer if you make a mistake.</div>
+
+<header>
+  <div class="wrap">
+    <h1>Grocery Checklist</h1>
+    <div class="bar">
+      <input id="search" type="search" placeholder="Search or filter (e.g., 'shrimp', 'dairy', 'bell pepper')…" />
       <div class="controls">
-        <input id="search" type="search" placeholder="Search items… (e.g., shrimp, chips, eggs)" aria-label="Search items" />
-        <button class="btn" id="undoBtn" title="Undo last removal">Undo</button>
-        <button class="btn" id="resetBtn" title="Restore all items">Reset All</button>
-        <button class="btn primary" id="printBtn" title="Print this list">Print</button>
-        <span class="pill" id="stats">0 remaining</span>
+        <button id="btnPrint" title="Print list">🖨️ Print</button>
+        <button id="btnReset" class="btn-ghost" title="Reset to original list">↺ Reset</button>
+        <button id="btnExport" class="btn-ghost" title="Export JSON">⤴ Export</button>
+        <button id="btnImport" class="btn-ghost" title="Import JSON">⤵ Import</button>
+        <span class="pill" id="count"></span>
       </div>
     </div>
-  </header>
-
-  <main id="app"></main>
-
-  <div class="container">
-    <details class="removed" id="removedDrawer">
-      <summary>Removed items (tap to view & restore)</summary>
-      <div class="removed-list" id="removedList"></div>
-    </details>
+    <div class="grid-add" style="margin-top:10px">
+      <div>
+        <label class="hint">Item</label>
+        <input id="addName" type="text" placeholder="e.g., Lemon tortilla chips" />
+      </div>
+      <div>
+        <label class="hint">Qty</label>
+        <input id="addQty" type="text" placeholder="e.g., 2 bags" />
+      </div>
+      <div>
+        <label class="hint">Category</label>
+        <select id="addCat"></select>
+      </div>
+      <div>
+        <button id="btnAdd" class="btn-primary">＋ Add Item</button>
+      </div>
+    </div>
+    <div class="hint" style="margin-top:6px">
+      Tip: Double‑click an item name or qty to edit. Press <span class="kbd">Enter</span> to save or click ✓.
+    </div>
   </div>
+</header>
 
-  <script>
-    // --- Data ---------------------------------------------------------------
-    const DATA = [
-      {
-        title: "1. Produce",
-        items: [
-          { name: "Bananas" },
-          { name: "Garlic", meta: "8 cloves" },
-          { name: "Tomato", meta: "2" },
-          { name: "Yellow onion", meta: "3 medium" },
-          { name: "Broccoli", meta: "1 crown" },
-          { name: "Cauliflower", meta: "1 medium head" },
-          { name: "Cremini mushrooms", meta: "1 lb" },
-          { name: "Kale", meta: "1 bunch" },
-          { name: "Lettuce", meta: "1 head" },
-          { name: "Orange bell pepper", meta: "4" },
-          { name: "Red bell pepper", meta: "2" },
-          { name: "Zucchini squash", meta: "6 medium" },
-          { name: "Spring mix (mixed greens)", meta: "5 oz pkg" },
-        ]
-      },
-      {
-        title: "2. Deli & Prepared Foods",
-        items: [
-          { name: "Goat cheese", meta: "4 oz log" },
-          { name: "Parmesan cheese", meta: "2 oz" },
-          { name: "Sliced ham" },
-          { name: "Chicken nuggets" },
-        ]
-      },
-      {
-        title: "3. Meat & Seafood",
-        items: [
-          { name: "Bacon" },
-          { name: "Chicken breasts, boneless skinless", meta: "1½ lb" },
-          { name: "Ground pork sausage", meta: "1 lb" },
-          { name: "Raw peeled shrimp", meta: "1½ lb" },
-        ]
-      },
-      {
-        title: "4. Dairy, Cheese & Eggs",
-        items: [
-          { name: "Cheddar cheese", meta: "⅔ (8 oz) block" },
-          { name: "Mozzarella cheese", meta: "8 oz block" },
-          { name: "Eggs", meta: "14" },
-          { name: "Heavy whipping cream", meta: "8 fl oz" },
-          { name: "Plain Greek yogurt", meta: "¼ cup" },
-          { name: "Moo Tubes" },
-          { name: "Milk" },
-          { name: "Lemon bread", meta: "2 loaves" },
-          { name: "Protein shakes", meta: "4 cases (2 vanilla, 2 chocolate)" },
-        ]
-      },
-      {
-        title: "5. Snacks, Chips & Cereal",
-        items: [
-          { name: "Lemon tortilla chips", meta: "2 bags" },
-          { name: "Cheddar popcorn", meta: "2 bags" },
-          { name: "Lucky Charms cereal", meta: "1 box" },
-          { name: "Jellos", meta: "2" },
-        ]
-      },
-      {
-        title: "6. Frozen",
-        items: [
-          { name: "Ice cream", meta: "2 cartons" },
-        ]
-      },
-      {
-        title: "7. Pantry, Baking & Spices",
-        items: [
-          { name: "Honey" },
-          { name: "Black pepper" },
-          { name: "Italian seasoning" },
-          { name: "Paprika" },
-          { name: "Salt" },
-          { name: "Smoked paprika" },
-          { name: "Pumpkin seeds", meta: "½ cup" },
-        ]
-      },
-      {
-        title: "8. Canned & Jarred Goods",
-        items: [
-          { name: "Chicken or vegetable broth", meta: "8 fl oz" },
-          { name: "Tomato sauce", meta: "2 × 8 oz cans" },
-          { name: "Olives" },
-        ]
-      },
-      {
-        title: "9. Condiments & Oils",
-        items: [
-          { name: "Dijon mustard" },
-          { name: "Extra virgin olive oil" },
-          { name: "White wine vinegar" },
-          { name: "Honey mustard sauce" },
-        ]
-      },
-      {
-        title: "10. Beverages",
-        items: [
-          { name: "Juice", meta: "3 cartons" },
-        ]
-      },
-      {
-        title: "11. Paper & Disposable Goods",
-        items: [
-          { name: "Paper plates" },
-          { name: "Paper bowls" },
-        ]
-      },
-    ];
+<main class="wrap" id="app"></main>
 
-    // --- Utilities ----------------------------------------------------------
-    const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
-    const uidFor = (cat, item) => `${slug(cat)}__${slug(item)}`;
+<div class="wrap drawer">
+  <details id="removedDrawer">
+    <summary>🗂 Removed items (click to expand & restore)</summary>
+    <div class="removed" id="removedList"></div>
+  </details>
+</div>
 
-    const $ = (sel, el=document) => el.querySelector(sel);
-    const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+<footer class="footer">
+  <div class="hint">All changes auto‑saved to your browser (localStorage).</div>
+  <div class="controls">
+    <button id="clearRemoved" class="btn-ghost">Clear Removed</button>
+    <button id="restoreAll">Restore All</button>
+  </div>
+</footer>
 
-    // Local storage state
-    const LS_REMOVED = 'grocery_removed_v1';
-    const LS_HISTORY = 'grocery_history_v1';
+<script>
+/** ---------- Data ---------- **/
+const STORAGE_KEY = 'groceryChecklist.v2';
+const CATEGORIES_ORDER = [
+  "1. Produce",
+  "2. Deli & Prepared Foods",
+  "3. Meat & Seafood",
+  "4. Dairy, Cheese & Eggs",
+  "5. Snacks, Chips & Cereal",
+  "6. Frozen",
+  "7. Pantry, Baking & Spices",
+  "8. Canned & Jarred Goods",
+  "9. Condiments & Oils",
+  "10. Beverages",
+  "11. Paper & Disposable Goods"
+];
 
-    const getRemoved = () => new Set(JSON.parse(localStorage.getItem(LS_REMOVED) || '[]'));
-    const setRemoved = (set) => localStorage.setItem(LS_REMOVED, JSON.stringify([...set]));
+function seedData() {
+  // From your latest “store walking path” list, with quantities
+  const items = [
+    {n:"Bananas", q:"as needed", c:"1. Produce"},
+    {n:"Garlic", q:"8 cloves", c:"1. Produce"},
+    {n:"Tomato", q:"2", c:"1. Produce"},
+    {n:"Yellow onion", q:"3 medium", c:"1. Produce"},
+    {n:"Broccoli", q:"1 crown", c:"1. Produce"},
+    {n:"Cauliflower", q:"1 medium head", c:"1. Produce"},
+    {n:"Cremini mushrooms", q:"1 lb", c:"1. Produce"},
+    {n:"Kale", q:"1 bunch", c:"1. Produce"},
+    {n:"Lettuce", q:"1 head", c:"1. Produce"},
+    {n:"Orange bell pepper", q:"4", c:"1. Produce"},
+    {n:"Red bell pepper", q:"2", c:"1. Produce"},
+    {n:"Zucchini squash", q:"6 medium", c:"1. Produce"},
+    {n:"Spring mix (mixed greens)", q:"5 oz pkg", c:"1. Produce"},
 
-    const getHistory = () => JSON.parse(localStorage.getItem(LS_HISTORY) || '[]');
-    const setHistory = (arr) => localStorage.setItem(LS_HISTORY, JSON.stringify(arr));
+    {n:"Goat cheese", q:"4 oz log", c:"2. Deli & Prepared Foods"},
+    {n:"Parmesan cheese", q:"2 oz", c:"2. Deli & Prepared Foods"},
+    {n:"Sliced ham", q:"", c:"2. Deli & Prepared Foods"},
+    {n:"Chicken nuggets", q:"", c:"2. Deli & Prepared Foods"},
 
-    // --- Render -------------------------------------------------------------
-    const app = document.getElementById('app');
+    {n:"Bacon", q:"", c:"3. Meat & Seafood"},
+    {n:"Chicken breasts, boneless skinless", q:"1½ lb", c:"3. Meat & Seafood"},
+    {n:"Ground pork sausage", q:"1 lb", c:"3. Meat & Seafood"},
+    {n:"Raw peeled shrimp", q:"1½ lb", c:"3. Meat & Seafood"},
 
-    function render(){
-      const removed = getRemoved();
-      app.innerHTML = '';
+    {n:"Cheddar cheese", q:"~5.3 oz", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Mozzarella cheese", q:"8 oz block", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Eggs", q:"14", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Heavy whipping cream", q:"8 fl oz", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Plain Greek yogurt", q:"¼ cup", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Moo Tubes", q:"", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Milk", q:"", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Lemon bread", q:"2 loaves", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Protein shakes (vanilla)", q:"2 cases", c:"4. Dairy, Cheese & Eggs"},
+    {n:"Protein shakes (chocolate)", q:"2 cases", c:"4. Dairy, Cheese & Eggs"},
 
-      DATA.forEach(section => {
-        const sec = document.createElement('section');
-        const header = document.createElement('div');
-        header.className = 'sec-title';
-        header.innerHTML = `<h2>${section.title}</h2><span class="count"></span>`;
+    {n:"Lemon tortilla chips", q:"2 bags", c:"5. Snacks, Chips & Cereal"},
+    {n:"Cheddar popcorn", q:"2 bags", c:"5. Snacks, Chips & Cereal"},
+    {n:"Lucky Charms cereal", q:"1 box", c:"5. Snacks, Chips & Cereal"},
+    {n:"Jellos", q:"2", c:"5. Snacks, Chips & Cereal"},
 
-        const ul = document.createElement('ul');
-        ul.className = 'items';
+    {n:"Ice cream", q:"2 cartons", c:"6. Frozen"},
 
-        let count = 0;
-        section.items.forEach(({name, meta}) => {
-          const id = uidFor(section.title, name);
-          if(removed.has(id)) return; // skip removed
-          count++;
+    {n:"Honey", q:"", c:"7. Pantry, Baking & Spices"},
+    {n:"Black pepper", q:"", c:"7. Pantry, Baking & Spices"},
+    {n:"Italian seasoning", q:"", c:"7. Pantry, Baking & Spices"},
+    {n:"Paprika", q:"", c:"7. Pantry, Baking & Spices"},
+    {n:"Salt", q:"", c:"7. Pantry, Baking & Spices"},
+    {n:"Smoked paprika", q:"", c:"7. Pantry, Baking & Spices"},
+    {n:"Pumpkin seeds", q:"½ cup", c:"7. Pantry, Baking & Spices"},
 
-          const li = document.createElement('li');
-          li.className = 'item';
-          li.dataset.id = id;
+    {n:"Chicken or vegetable broth", q:"8 fl oz", c:"8. Canned & Jarred Goods"},
+    {n:"Tomato sauce", q:"2 × 8 oz cans", c:"8. Canned & Jarred Goods"},
+    {n:"Olives", q:"", c:"8. Canned & Jarred Goods"},
 
-          const chk = document.createElement('input');
-          chk.type = 'checkbox';
-          chk.className = 'chk';
-          chk.setAttribute('aria-label', `Mark ${name} as picked up`);
+    {n:"Dijon mustard", q:"", c:"9. Condiments & Oils"},
+    {n:"Extra virgin olive oil", q:"", c:"9. Condiments & Oils"},
+    {n:"White wine vinegar", q:"", c:"9. Condiments & Oils"},
+    {n:"Honey mustard sauce", q:"", c:"9. Condiments & Oils"},
 
-          const label = document.createElement('div');
-          label.className = 'label';
-          label.innerHTML = `<div class="name">${name}</div>${meta ? `<div class="meta">${meta}</div>`: ''}`;
+    {n:"Juice", q:"3 cartons", c:"10. Beverages"},
 
-          chk.addEventListener('change', () => {
-            if(chk.checked){
-              completeItem(id, li, name);
-            }
-          });
+    {n:"Paper plates", q:"", c:"11. Paper & Disposable Goods"},
+    {n:"Paper bowls", q:"", c:"11. Paper & Disposable Goods"}
+  ];
+  // Assign ids
+  return {
+    items: items.map((x, i) => ({ id: crypto.randomUUID(), name: x.n, qty: x.q, cat: x.c })),
+    removed: []
+  };
+}
 
-          li.appendChild(chk);
-          li.appendChild(label);
-          ul.appendChild(li);
-        });
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return seedData();
+    const obj = JSON.parse(raw);
+    if (!obj.items) throw new Error('bad');
+    return obj;
+  } catch {
+    return seedData();
+  }
+}
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); updateCount(); }
 
-        header.querySelector('.count').textContent = count ? `${count} items` : 'All done';
-        sec.appendChild(header);
-        sec.appendChild(ul);
-        app.appendChild(sec);
-      });
+let state = loadState();
 
-      updateStats();
-      syncSearch();
-      renderRemovedChips();
+/** ---------- DOM helpers ---------- **/
+const $ = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+const app = $('#app');
+const removedList = $('#removedList');
+
+function iconEdit(){ return '✏️'; }
+function iconSave(){ return '✓'; }
+function iconCancel(){ return '↩'; }
+function iconDelete(){ return '🗑️'; }
+function iconRestore(){ return '⤺ Restore'; }
+
+function categoryTitle(cat){ return cat; }
+
+function render() {
+  app.innerHTML = '';
+  const filter = ($('#search').value || '').trim().toLowerCase();
+
+  // Build category sections
+  for (const cat of CATEGORIES_ORDER) {
+    const items = state.items.filter(it => it.cat === cat)
+      .filter(it => !filter || it.name.toLowerCase().includes(filter) || it.qty.toLowerCase().includes(filter) || it.cat.toLowerCase().includes(filter));
+    if (items.length === 0) continue;
+
+    const sec = document.createElement('section');
+    sec.className = 'category';
+    const h2 = document.createElement('h2');
+    h2.textContent = categoryTitle(cat);
+    sec.appendChild(h2);
+
+    const ul = document.createElement('ul');
+    ul.className = 'items';
+
+    for (const it of items) {
+      ul.appendChild(renderItem(it));
     }
+    sec.appendChild(ul);
+    app.appendChild(sec);
+  }
 
-    function updateStats(){
-      const remaining = $$('.item').length;
-      document.getElementById('stats').textContent = `${remaining} remaining`;
-    }
+  renderRemoved();
+  updateCount();
+  refreshCategorySelect();
+  if (!app.children.length) {
+    const div = document.createElement('div');
+    div.className = 'empty';
+    div.textContent = 'No items match your search.';
+    app.appendChild(div);
+  }
+}
 
-    // --- Interactions -------------------------------------------------------
-    function completeItem(id, li, name){
-      li.classList.add('fade-out');
-      setTimeout(() => {
-        li.remove();
-        const removed = getRemoved();
-        removed.add(id);
-        setRemoved(removed);
-        const history = getHistory();
-        history.push({ id, name });
-        setHistory(history);
-        updateStats();
-        renderRemovedChips();
-      }, 220);
-    }
+function renderItem(it){
+  const li = document.createElement('li');
+  li.className = 'item';
+  li.dataset.id = it.id;
 
-    function undo(){
-      const history = getHistory();
-      if(!history.length) return;
-      const last = history.pop();
-      setHistory(history);
-      const removed = getRemoved();
-      removed.delete(last.id);
-      setRemoved(removed);
-      render();
-      // Focus the restored item if possible
-      const restored = document.querySelector(`[data-id="${last.id}"] .chk`);
-      if(restored){ restored.focus(); }
-    }
+  // left: checkbox
+  const left = document.createElement('div');
+  left.className = 'item-left';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.title = 'Check to remove';
+  cb.addEventListener('change', () => checkItem(it.id));
+  left.appendChild(cb);
 
-    function resetAll(){
-      localStorage.removeItem(LS_REMOVED);
-      localStorage.removeItem(LS_HISTORY);
-      render();
-      window.scrollTo({ top:0, behavior:'smooth' });
-    }
+  // middle: name + qty (editable)
+  const mid = document.createElement('div');
+  const name = document.createElement('span');
+  name.className = 'name';
+  name.textContent = it.name;
+  name.title = 'Double‑click to edit name';
+  name.addEventListener('dblclick', () => inlineEdit(name, it.id, 'name'));
 
-    function renderRemovedChips(){
-      const removed = [...getRemoved()];
-      const wrap = document.getElementById('removedList');
-      wrap.innerHTML = '';
-      if(!removed.length){
-        wrap.textContent = 'Nothing removed yet.';
-        return;
+  const space = document.createTextNode(' ');
+  const qty = document.createElement('span');
+  qty.className = 'qty';
+  qty.textContent = it.qty ? `• ${it.qty}` : '';
+  qty.title = 'Double‑click to edit quantity';
+  qty.addEventListener('dblclick', () => inlineEdit(qty, it.id, 'qty', true));
+
+  mid.appendChild(name);
+  mid.appendChild(space);
+  mid.appendChild(qty);
+
+  // right: actions (edit, move, delete)
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+
+  const btnEdit = document.createElement('button');
+  btnEdit.className = 'btn-icon';
+  btnEdit.title = 'Edit name & qty';
+  btnEdit.textContent = iconEdit();
+  btnEdit.addEventListener('click', () => openRowEditor(li, it));
+  actions.appendChild(btnEdit);
+
+  const moveSelect = document.createElement('select');
+  moveSelect.title = 'Move to category';
+  for (const cat of CATEGORIES_ORDER) {
+    const opt = document.createElement('option');
+    opt.value = cat; opt.textContent = cat;
+    if (cat === it.cat) opt.selected = true;
+    moveSelect.appendChild(opt);
+  }
+  moveSelect.addEventListener('change', e => { it.cat = e.target.value; saveState(); render(); });
+  actions.appendChild(moveSelect);
+
+  const btnDel = document.createElement('button');
+  btnDel.className = 'btn-icon';
+  btnDel.title = 'Delete (send to Removed)';
+  btnDel.textContent = iconDelete();
+  btnDel.addEventListener('click', () => checkItem(it.id));
+  actions.appendChild(btnDel);
+
+  li.appendChild(left);
+  li.appendChild(mid);
+  li.appendChild(actions);
+
+  return li;
+}
+
+function inlineEdit(span, id, field, isQty=false){
+  const it = state.items.find(x => x.id === id);
+  if (!it) return;
+  const old = field === 'name' ? it.name : it.qty;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = old || '';
+  input.style.width = (Math.max(10, (span.textContent || '').length) + 3) + 'ch';
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { commit(); }
+    if (e.key === 'Escape') { cancel(); }
+  });
+  input.addEventListener('blur', commit);
+
+  span.replaceWith(input);
+  input.focus(); input.select();
+
+  function commit(){
+    const val = input.value.trim();
+    if (field === 'name') it.name = val || it.name;
+    else it.qty = val;
+    saveState(); render();
+  }
+  function cancel(){ render(); }
+}
+
+function openRowEditor(li, it){
+  // Replace middle & actions with inputs
+  const mid = li.children[1];
+  const actions = li.children[2];
+  mid.innerHTML = '';
+  actions.innerHTML = '';
+
+  const nameI = document.createElement('input');
+  nameI.type = 'text'; nameI.value = it.name; nameI.placeholder = 'Item name'; nameI.style.minWidth='160px';
+
+  const qtyI = document.createElement('input');
+  qtyI.type = 'text'; qtyI.value = it.qty; qtyI.placeholder = 'Qty (e.g., 2 bags)'; qtyI.style.minWidth='120px';
+
+  mid.appendChild(nameI);
+  mid.appendChild(document.createTextNode(' '));
+  mid.appendChild(qtyI);
+
+  const btnSave = document.createElement('button');
+  btnSave.className = 'btn-icon'; btnSave.textContent = iconSave();
+  btnSave.addEventListener('click', save);
+  const btnCancel = document.createElement('button');
+  btnCancel.className = 'btn-icon'; btnCancel.textContent = iconCancel();
+  btnCancel.addEventListener('click', () => render());
+
+  actions.appendChild(btnSave);
+  actions.appendChild(btnCancel);
+
+  nameI.focus(); nameI.select();
+  nameI.addEventListener('keydown', e => { if (e.key==='Enter') save(); if (e.key==='Escape') render(); });
+  qtyI.addEventListener('keydown', e => { if (e.key==='Enter') save(); if (e.key==='Escape') render(); });
+
+  function save(){
+    const nm = nameI.value.trim();
+    const qv = qtyI.value.trim();
+    if (nm) it.name = nm;
+    it.qty = qv;
+    saveState(); render();
+  }
+}
+
+function checkItem(id){
+  const i = state.items.findIndex(x => x.id === id);
+  if (i === -1) return;
+  const [it] = state.items.splice(i, 1);
+  state.removed.unshift({...it, removedAt: Date.now()});
+  saveState(); render();
+}
+
+function restoreItem(id){
+  const i = state.removed.findIndex(x => x.id === id);
+  if (i === -1) return;
+  const [it] = state.removed.splice(i, 1);
+  state.items.push(it);
+  saveState(); render();
+}
+
+function renderRemoved(){
+  removedList.innerHTML = '';
+  if (state.removed.length === 0) {
+    removedList.innerHTML = '<div class="empty">Nothing here yet.</div>';
+    return;
+  }
+  for (const it of state.removed) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const left = document.createElement('div');
+    left.innerHTML = `<span class="name">${escapeHtml(it.name)}</span> <span class="qty muted">${it.qty ? '• '+escapeHtml(it.qty) : ''}</span> <span class="chip">${escapeHtml(it.cat)}</span>`;
+    const right = document.createElement('div');
+    const btn = document.createElement('button');
+    btn.textContent = iconRestore();
+    btn.addEventListener('click', () => restoreItem(it.id));
+    right.appendChild(btn);
+    row.appendChild(left); row.appendChild(right);
+    removedList.appendChild(row);
+  }
+}
+
+function updateCount(){
+  const total = state.items.length;
+  const removed = state.removed.length;
+  $('#count').textContent = `${total} items • ${removed} removed`;
+}
+
+function refreshCategorySelect(){
+  const sel = $('#addCat');
+  const current = sel.value;
+  sel.innerHTML = '';
+  for (const cat of CATEGORIES_ORDER) {
+    const opt = document.createElement('option');
+    opt.value = cat; opt.textContent = cat;
+    sel.appendChild(opt);
+  }
+  sel.value = current || CATEGORIES_ORDER[0];
+}
+
+function addItem(){
+  const name = ($('#addName').value || '').trim();
+  const qty = ($('#addQty').value || '').trim();
+  const cat = $('#addCat').value;
+  if (!name) {
+    alert('Please enter an item name.'); return;
+  }
+  state.items.push({ id: crypto.randomUUID(), name, qty, cat });
+  $('#addName').value = ''; $('#addQty').value = '';
+  saveState(); render();
+}
+
+function resetAll(){
+  if (!confirm('Reset to your original list? This will replace current items but keep a backup export prompt.')) return;
+  state = seedData();
+  saveState(); render();
+}
+
+function exportJson(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'grocery-checklist.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importJson(){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json';
+  inp.addEventListener('change', () => {
+    const file = inp.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const obj = JSON.parse(reader.result);
+        if (!obj.items || !Array.isArray(obj.items)) throw new Error('Invalid file');
+        state = obj;
+        saveState(); render();
+      } catch (e) {
+               alert('Import failed: ' + e.message);
       }
-      // Build a lookup of id -> label
-      const idToLabel = new Map();
-      DATA.forEach(sec => sec.items.forEach(it => idToLabel.set(uidFor(sec.title, it.name), `${it.name}${it.meta ? ` — ${it.meta}`:''}`)));
+    };
+    reader.readAsText(file);
+  });
+  inp.click();
+}
 
-      removed.forEach(id => {
-        const chip = document.createElement('span');
-        chip.className = 'removed-chip';
-        chip.innerHTML = `<span>${idToLabel.get(id) || id}</span>`;
-        const btn = document.createElement('button');
-        btn.textContent = 'Restore';
-        btn.addEventListener('click', () => {
-          const r = getRemoved(); r.delete(id); setRemoved(r);
-          const hist = getHistory();
-          // Remove any existing entries for this id from history to avoid odd undos
-          for(let i = hist.length - 1; i >= 0; i--){ if(hist[i].id === id) hist.splice(i,1); }
-          setHistory(hist);
-          render();
-        });
-        chip.appendChild(btn);
-        wrap.appendChild(chip);
-      });
-    }
+function clearRemoved(){
+  if (!state.removed.length) return;
+  if (!confirm('Permanently clear removed items?')) return;
+  state.removed = []; saveState(); renderRemoved(); updateCount();
+}
 
-    // Search filter
-    const searchEl = document.getElementById('search');
-    searchEl.addEventListener('input', syncSearch);
+function restoreAll(){
+  if (!state.removed.length) return;
+  state.items.push(...state.removed.splice(0, state.removed.length));
+  saveState(); render();
+}
 
-    function syncSearch(){
-      const q = searchEl.value.trim().toLowerCase();
-      $$('#app section').forEach(sec => {
-        let visibleInSection = 0;
-        $$('.item', sec).forEach(li => {
-          const text = li.textContent.toLowerCase();
-          const show = !q || text.includes(q);
-          li.style.display = show ? '' : 'none';
-          if(show) visibleInSection++;
-        });
-        // Update section count and hide section if empty on filter
-        $('.count', sec.previousElementSibling || sec) // fallback
-        const countEl = $('.count', sec.querySelector('.sec-title') ? sec : document);
-        const header = $('.sec-title', sec);
-        if(header){ header.querySelector('.count').textContent = `${visibleInSection} items`; }
-        sec.style.display = (visibleInSection || !q) ? '' : 'none';
-      });
-      updateStats();
-    }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-    // Buttons
-    document.getElementById('undoBtn').addEventListener('click', undo);
-    document.getElementById('resetBtn').addEventListener('click', resetAll);
-    document.getElementById('printBtn').addEventListener('click', () => window.print());
+/** ---------- Events ---------- **/
+$('#btnAdd').addEventListener('click', addItem);
+$('#search').addEventListener('input', render);
+$('#btnReset').addEventListener('click', resetAll);
+$('#btnExport').addEventListener('click', exportJson);
+$('#btnImport').addEventListener('click', importJson);
+$('#clearRemoved').addEventListener('click', clearRemoved);
+$('#restoreAll').addEventListener('click', restoreAll);
+$('#btnPrint').addEventListener('click', () => window.print());
 
-    // Init
-    render();
-  </script>
+// Enter to add from "Item" or "Qty" fields
+$('#addName').addEventListener('keydown', e => { if (e.key==='Enter') addItem(); });
+$('#addQty').addEventListener('keydown', e => { if (e.key==='Enter') addItem(); });
+
+/** ---------- Init ---------- **/
+render();
+</script>
 </body>
 </html>
